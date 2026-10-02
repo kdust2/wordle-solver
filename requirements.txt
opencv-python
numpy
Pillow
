@@ -1,0 +1,79 @@
+# Wordle Solver
+
+This project builds a simple desktop-friendly Wordle solver that can:
+- evaluate a guessed word against a target pattern
+- narrow the list of possible answers using Wordle constraints
+- suggest the strongest next guess
+- optionally ingest a board image for a first pass at grid extraction
+
+The first release is a working MVP: it solves from Wordle-style guess/pattern inputs and includes a basic image-processing scaffold for screenshots.
+
+## Features
+- Valid Wordle guess evaluation (`G`, `Y`, `_`)
+- Candidate filtering based on previous guesses
+- Best-guess recommendation using letter frequency scoring
+- Screenshot image parser scaffold using OpenCV
+- Lightweight CLI for local use
+
+## Quick start
+
+### 1) Install dependencies
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2) Solve from known history
+
+```bash
+python main.py --history "SLATE:GY___" --history "CRANE:YYY__"
+```
+
+### 3) Solve a screenshot
+
+```bash
+python main.py --image path/to/your/wordle-board.png
+```
+
+This mode tries to detect a Wordle-style 5x6 grid in the screenshot. It will give you a best-effort result and will ask you to use a high-contrast image if detection is weak.
+
+## Pattern format
+
+Use 5-character patterns:
+- `G` = green, correct letter in the correct position
+- `Y` = yellow, letter exists elsewhere in the word
+- `_` = gray, letter is not in the word
+
+Example:
+
+```text
+SLATE: GY_ _ _
+```
+
+Use as a single continuous string without spaces, for example:
+
+```text
+SLATE:GY___
+```
+
+## Project structure
+
+- `main.py` — CLI entry point
+- `wordle_solver.py` — logic for filtering candidates and choosing the best guess
+- `image_processor.py` — screenshot/grid detection helper
+- `wordlist.txt` — curated list of valid 5-letter Wordle-style guesses
+- `requirements.txt` — Python dependencies
+
+## Notes
+
+This is an MVP designed to be easy to run locally and extend. The image-based path is intentionally conservative and works best when the board occupies most of the photo and the letters are highly visible.
+
+## Future improvements
+- Better OCR for letters from a photo
+- Desktop GUI (Tkinter or PyQt)
+- Webcam capture support
+- Full Wordle board extraction with color detection
+- Packaging into a downloadable `.exe` / `.app`
+

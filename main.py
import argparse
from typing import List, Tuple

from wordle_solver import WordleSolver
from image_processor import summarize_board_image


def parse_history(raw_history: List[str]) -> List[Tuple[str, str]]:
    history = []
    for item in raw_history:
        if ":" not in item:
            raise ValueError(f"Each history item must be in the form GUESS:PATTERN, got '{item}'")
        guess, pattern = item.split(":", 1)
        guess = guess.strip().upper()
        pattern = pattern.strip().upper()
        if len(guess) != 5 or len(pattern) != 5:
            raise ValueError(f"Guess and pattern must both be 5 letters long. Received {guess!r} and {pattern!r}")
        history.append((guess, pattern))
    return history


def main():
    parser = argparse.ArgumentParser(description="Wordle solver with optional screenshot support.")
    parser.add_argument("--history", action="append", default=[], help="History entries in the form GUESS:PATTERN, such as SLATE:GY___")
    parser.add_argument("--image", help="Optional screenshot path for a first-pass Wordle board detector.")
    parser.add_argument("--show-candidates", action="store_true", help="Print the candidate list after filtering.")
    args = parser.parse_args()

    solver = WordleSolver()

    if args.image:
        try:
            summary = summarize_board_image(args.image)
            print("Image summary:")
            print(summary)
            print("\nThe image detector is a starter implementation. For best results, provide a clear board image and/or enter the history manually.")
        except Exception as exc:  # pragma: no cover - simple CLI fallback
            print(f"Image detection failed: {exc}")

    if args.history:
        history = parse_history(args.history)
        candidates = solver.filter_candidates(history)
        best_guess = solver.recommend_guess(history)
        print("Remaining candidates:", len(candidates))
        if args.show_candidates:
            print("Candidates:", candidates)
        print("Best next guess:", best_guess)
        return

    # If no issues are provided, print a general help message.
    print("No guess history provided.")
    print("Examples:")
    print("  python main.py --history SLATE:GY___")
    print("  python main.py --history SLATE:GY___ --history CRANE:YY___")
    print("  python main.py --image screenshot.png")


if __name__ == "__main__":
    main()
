@@ -1,0 +1,72 @@
+import cv2
+import numpy as np
+from pathlib import Path
+
+
+def detect_wordle_grid(image_path: str):
+    """Best-effort detection of a Wordle-like 5x6 board in a screenshot.
+
+    This is intentionally conservative and meant as a starter implementation.
+    It will work best when the board fills most of the image and contrast is high.
+    """
+    image = cv2.imread(image_path)
+    if image is None:
+        raise FileNotFoundError(f"Could not read image: {image_path}")
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    _, threshold = cv2.threshold(blur, 150, 255, cv2.THRESH_BINARY_INV)
+
+    contours, _ = cv2.findContours(threshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        raise ValueError("No grid-like contour found. Try a clearer screenshot of the board.")
+
+    # Keep the largest contour, which is often the board.
+    box = max(contours, key=cv2.contourArea)
+    x, y, w, h = cv2.boundingRect(box)
+
+    if w < 100 or h < 100:
+        raise ValueError("Detected a board region that is too small. Use a larger screenshot.")
+
+    # Simple estimate: assume a 5x6 Wordle board with several rows and columns.
+    cell_w = w / 5
+    cell_h = h / 6
+    cells = []
+    for row in range(6):
+        for col in range(5):
+            cell_x = x + int(col * cell_w)
+            cell_y = y + int(row * cell_h)
+            cells.append((cell_x, cell_y, int(cell_w), int(cell_h)))
+
+    return image, cells
+
+
+def summarize_board_image(image_path: str):
+    """Return a simple summary message for a board image.
+
+    This is helpful for the CLI, which can then tell the user to either use a
+    more precise screenshot or provide the board state manually.
+    """
+    image, cells = detect_wordle_grid(image_path)
+    return {
+        "width": image.shape[1],
+        "height": image.shape[0],
+        "estimated_grid_cells": len(cells),
+        "message": "A grid-like board was detected. This is a best-effort pass; for best results, provide a clear image and/or enter the board manually.",
+    }
+
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) < 2:
+        print("Usage: python image_processor.py path/to/board.png")
+        raise SystemExit(1)
+
+    try:
+        result = summarize_board_image(sys.argv[1])
+        print(result)
+    except Exception as exc:  # pragma: no cover - simple CLI wrapper
+        print(f"Error: {exc}")
+        raise SystemExit(1)
+
