@@ -1,0 +1,37 @@
+# Word Game Solver
+
+A lightweight solver for word games that can parse a screenshot or take typed guesses and suggest the best next answer.
+
+## What it does
+
+- Solves standard Wordle puzzles using green/yellow/gray feedback
+- Filters candidate words from a dictionary
+- Recommends the best next guess
+- Detects a Wordle-like board from a screenshot
+- Supports a custom word-solving mode
+
+## Quick start
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python main.py --game wordle --history SLATE:GY___ --history CRANE:YY___
+```
+
+## Example commands
+
+```bash
+python main.py --game wordle --history SLATE:GY___ --history CRANE:YY___
+python main.py --game custom --must-contain A --pattern "*A***" --length 5
+python main.py --game wordle --image screenshot.png
+```
+
+## Notes
+
+This project is intentionally simple and modular so it can grow into a larger solver for different word games and board layouts.
+
+## License
+
+MIT
+

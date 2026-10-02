@@ -1,0 +1,78 @@
+from __future__ import annotations
+
+import argparse
+from typing import List, Sequence
+
+from game_solver import GenericWordSolver
+from image_processor import summarize_board_image
+from wordle_solver import WordleSolver
+
+
+def parse_history(raw_history: Sequence[str]) -> list[tuple[str, str]]:
+    history: list[tuple[str, str]] = []
+    for item in raw_history:
+        if ":" not in item:
+            raise ValueError(f"Each history value must be in the form GUESS:PATTERN; got: {item}")
+        guess, pattern = item.split(":", 1)
+        guess = guess.strip().upper()
+        pattern = pattern.strip().upper()
+        if len(guess) != 5 or len(pattern) != 5:
+            raise ValueError(f"Guess and pattern must both be 5 letters long: {guess!r} {pattern!r}")
+        history.append((guess, pattern))
+    return history
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Universal word game solver")
+    parser.add_argument("--game", choices=["wordle", "custom"], default="wordle", help="Game type to solve")
+    parser.add_argument("--history", action="append", default=[], help="Entry in GUESS:PATTERN form, e.g. SLATE:GY___")
+    parser.add_argument("--image", help="Optional screenshot or board image")
+    parser.add_argument("--show-candidates", action="store_true", help="Print candidate words")
+    parser.add_argument("--must-contain", default="", help="Letters that must appear in the answer")
+    parser.add_argument("--cannot-contain", default="", help="Letters that cannot appear")
+    parser.add_argument("--pattern", default="", help="Pattern like S_A__ or *A***")
+    parser.add_argument("--length", type=int, default=5, help="Word length")
+    args = parser.parse_args()
+
+    if args.image:
+        try:
+            summary = summarize_board_image(args.image)
+            print("Image detection:")
+            print(summary)
+        except Exception as exc:
+            print(f"Image detection failed: {exc}")
+
+    if args.game == "wordle":
+        if not args.history:
+            print("No Wordle history provided.")
+            print("Examples:")
+            print("  python main.py --game wordle --history SLATE:GY___")
+            print("  python main.py --game wordle --history SLATE:GY___ --history CRANE:YY___")
+            return
+
+        solver = WordleSolver()
+        history = parse_history(args.history)
+        candidates = solver.filter_candidates(history)
+        print(f"Remaining candidates: {len(candidates)}")
+        if args.show_candidates:
+            print("Candidates:", candidates)
+        print("Best next guess:", solver.recommend_guess(history))
+        return
+
+    generic = GenericWordSolver()
+    filtered = generic.filter_words(
+        length=args.length,
+        must_contain=args.must_contain.upper(),
+        cannot_contain=args.cannot_contain.upper(),
+        pattern=args.pattern.upper(),
+    )
+
+    print(f"Custom candidates: {len(filtered)}")
+    if args.show_candidates:
+        print(filtered)
+    if filtered:
+        print("Best guess:", generic.recommend_guess(filtered))
+
+
+if __name__ == "__main__":
+    main()

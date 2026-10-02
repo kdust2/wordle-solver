@@ -1,0 +1,116 @@
+from __future__ import annotations
+
+import os
+from collections import Counter
+from typing import Iterable, Sequence
+
+
+class WordleSolver:
+    def __init__(self, wordlist_path: str | None = None):
+        if wordlist_path is None:
+            wordlist_path = os.path.join(os.path.dirname(__file__), "wordlist.txt")
+
+        with open(wordlist_path, "r", encoding="utf-8") as handle:
+            self.words = [
+                line.strip().upper()
+                for line in handle
+                if line.strip() and len(line.strip()) == 5 and line.strip().isalpha()
+            ]
+
+        if not self.words:
+            raise ValueError(f"No valid 5-letter words found in {wordlist_path}")
+
+    @staticmethod
+    def evaluate_guess(secret: str, guess: str) -> str:
+        secret = secret.upper()
+        guess = guess.upper()
+        result = ["_" for _ in range(5)]
+
+        for i, (secret_char, guess_char) in enumerate(zip(secret, guess)):
+            if guess_char == secret_char:
+                result[i] = "G"
+
+        remaining = [ch for ch, state in zip(secret, result) if state != "G"]
+        for i, guess_char in enumerate(guess):
+            if result[i] == "G":
+                continue
+            if guess_char in remaining:
+                result[i] = "Y"
+                remaining.remove(guess_char)
+
+        return "".join(result)
+
+    def filter_candidates(self, history: Sequence[tuple[str, str]]) -> list[str]:
+        candidates = self.words[:]
+        for guess, pattern in history:
+            guess = guess.upper()
+            pattern = pattern.upper()
+            if len(guess) != 5 or len(pattern) != 5:
+                raise ValueError(f"Invalid guess/pattern: {guess!r} {pattern!r}")
+            candidates = [word for word in candidates if self.matches_pattern(word, guess, pattern)]
+        return candidates
+
+    def matches_pattern(self, word: str, guess: str, pattern: str) -> bool:
+        word = word.upper()
+        guess = guess.upper()
+        pattern = pattern.upper()
+
+        if len(word) != 5 or len(guess) != 5 or len(pattern) != 5:
+            return False
+
+        remaining = {}
+        for idx, (guess_char, code) in enumerate(zip(guess, pattern)):
+            if code == "G":
+                if word[idx] != guess_char:
+                    return False
+            elif code == "Y":
+                remaining[guess_char] = remaining.get(guess_char, 0) + 1
+
+        for idx, (guess_char, code) in enumerate(zip(guess, pattern)):
+            if code == "G":
+                continue
+            if word[idx] == guess_char and code != "G":
+                return False
+
+        letter_counts = Counter(word)
+        for guess_char, code in zip(guess, pattern):
+            if code == "Y":
+                if guess_char not in letter_counts:
+                    return False
+                letter_counts[guess_char] -= 1
+                if letter_counts[guess_char] < 0:
+                    return False
+
+        for guess_char, code in zip(guess, pattern):
+            if code == "_" and guess_char in letter_counts and letter_counts[guess_char] > 0:
+                # If the letter is present only because of a previously satisfied yellow/green, allow it.
+                required_counts = sum(1 for g, c in zip(guess, pattern) if c in {"G", "Y"} and g == guess_char)
+                if required_counts >= letter_counts[guess_char]:
+                    continue
+                return False
+
+        return True
+
+    def recommend_guess(self, history: Sequence[tuple[str, str]]) -> str:
+        candidates = self.filter_candidates(history)
+        if not candidates:
+            raise ValueError("No remaining candidates. Check the guess history.")
+        if len(candidates) == 1:
+            return candidates[0]
+
+        letter_counts = Counter(ch for word in candidates for ch in word)
+        ranked = sorted(
+            candidates,
+            key=lambda word: (
+                -sum(letter_counts[ch] for ch in set(word)),
+                word,
+            ),
+        )
+        return ranked[0]
+
+
+if __name__ == "__main__":
+    solver = WordleSolver()
+    history = [("SLATE", "GY___"), ("CRANE", "YY___")]
+    print("Candidates:", solver.filter_candidates(history))
+    print("Best guess:", solver.recommend_guess(history))
