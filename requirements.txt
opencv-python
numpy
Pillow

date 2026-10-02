@@ -1,147 +1,29 @@
-# Common English words for the MVP solver.
-ADIEU
-ALBUM
-ALLEY
-ALONE
-AMONG
-APPLE
-AUDIO
-BABES
-BASIC
-BEACH
-BEEFY
-BLOOM
-BLUES
-BRAIN
-BRAVE
-BREAD
-BRINE
-BROOD
-BROWN
-CACHE
-CAMEL
-CANDY
-CHARM
-CHEST
-CHIME
-CLOUD
-COAST
-CRANE
-CRISP
-CROWN
-DAILY
-DANCE
-DEBIT
-DREAM
-EARTH
-EERIE
-ELBOW
-ELDER
-ENJOY
-ERROR
-EXACT
-FABLE
-FAITH
-FLAME
-FLEET
-FLOOR
-FORGE
-FOUND
-FRAME
-GHOST
-GLOVE
-GRACE
-GRAND
-GRAPE
-GREEN
-GREET
-HAPPY
-HEART
-HELLO
-HONEY
-HOUSE
-INNER
-JELLY
-JUICE
-KNACK
-KNIFE
-LARGE
-LEMON
-LEVER
-LIGHT
-LIVER
-MANGO
-MARCH
-MATCH
-MELON
-MERRY
-MIGHT
-MONEY
-MOUNT
-NORTH
-NOVEL
-OCEAN
-ORDER
-OTHER
-PAPER
-PEARL
-PILOT
-PLANT
-POINT
-POWER
-PROVE
-QUEEN
-QUICK
-RANGE
-RATIO
-READY
-RIVER
-ROBOT
-ROUND
-SAUCE
-SCALE
-SCENE
-SCORE
-SHINE
-SHORE
-SLATE
-SLOPE
-SMELL
-SOLAR
-SONIC
-SOUND
-SPACE
-SPICE
-SPLIT
-SPOKE
-STARE
-STEAM
-STONE
-STORY
-STRAW
-STYLE
-SUGAR
-TABLE
-TASTE
-THORN
-THREE
-TIGER
-TODAY
-TRACE
-TRAIN
-TRAIL
-TRICK
-TULIP
-UNDER
-UNITY
-VIDEO
-WAIST
-WATER
-WEIGH
-WHITE
-WHOLE
-WINDY
-WORLD
-WRITE
-YIELD
-ZOOMS
+# Word Game Solver
+
+A lightweight word-game solver with a Tkinter GUI, custom search mode, and simple screenshot detection support.
+
+## Features
+- Wordle guess/history solver
+- Generic custom solver for length / must-contain / cannot-contain / pattern constraints
+- Screenshot board detection starter
+- Desktop GUI
+
+## Run
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+WORDGAME_GUI=1 python main.py
+```
+
+Or run CLI mode:
+
+```bash
+python main.py --game wordle --history SLATE:GY___ --history CRANE:YY___
+python main.py --game custom --must-contain A --pattern "*A***" --length 5
+```
+
+## Notes
+
+This is an MVP suited for a local desktop app. The screenshot detection is a best-effort step and works best with clear, high-contrast board photos.
