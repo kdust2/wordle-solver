@@ -1,189 +1,89 @@
-# Word Game Solver
+from __future__ import annotations
 
-A universal solver for word games that can analyze board images or manual inputs and generate solutions for **any word puzzle**.
+import argparse
+import os
 
-## Supported Game Types
+from game_solver import GenericWordSolver
+from image_processor import summarize_board_image
+from wordle_solver import WordleSolver
 
-- **Wordle** — 5-letter guessing with color feedback
-- **Quordle** — 4 simultaneous Wordles
-- **Waffle** — 5x5 grid word puzzle
-- **Spelling Bee** — Center letter + 6 surrounding letters
-- **Crossword** — Any grid-based word puzzle
-- **Custom** — Define your own rules and board layout
 
-## Features
+def parse_history(raw_history: list[str]) -> list[tuple[str, str]]:
+    history: list[tuple[str, str]] = []
+    for item in raw_history:
+        if ":" not in item:
+            raise ValueError(f"Each history value must be in the form GUESS:PATTERN; got: {item}")
+        guess, pattern = item.split(":", 1)
+        guess = guess.strip().upper()
+        pattern = pattern.strip().upper()
+        if len(guess) != 5 or len(pattern) != 5:
+            raise ValueError(f"Guess and pattern must both be 5 letters long: {guess!r} {pattern!r}")
+        history.append((guess, pattern))
+    return history
 
-✅ **Flexible Input Methods:**
-- Screenshot/image upload (auto-detect board)
-- Manual word entry
-- Paste game board text
-- Define custom constraints
 
-✅ **Smart Solving:**
-- Candidate filtering based on constraints
-- Best-next-guess recommendation
-- Multi-word solution support
-- Constraint propagation (green, yellow, gray, etc.)
+def solve_wordle(history: list[str]) -> str:
+    solver = WordleSolver()
+    data = parse_history(history)
+    candidates = solver.filter_candidates(data)
+    best = solver.recommend_guess(data)
+    text = f"Remaining candidates: {len(candidates)}\nBest next guess: {best}\n"
+    if len(candidates) <= 20:
+        text += f"Candidates: {candidates}\n"
+    return text
 
-✅ **Universal Board Detection:**
-- Auto-detect 5x5, 5x6, 6x6 grids
-- Color extraction (green, yellow, gray)
-- OCR for letter recognition
-- Support for multiple board layouts
 
-✅ **Game-Specific Rules:**
-- Standard Wordle rules (G/Y/_ patterns)
-- Spelling Bee constraints (center letter required)
-- Waffle adjacency rules
-- Custom constraint definitions
+def solve_custom(length: int, must_contain: str, cannot_contain: str, pattern: str) -> str:
+    solver = GenericWordSolver()
+    filtered = solver.filter_words(
+        length=length,
+        must_contain=must_contain.upper(),
+        cannot_contain=cannot_contain.upper(),
+        pattern=pattern.upper(),
+    )
+    if not filtered:
+        return "No candidates match your rules."
+    best = solver.recommend_guess(filtered)
+    return f"Candidates found: {len(filtered)}\nBest guess: {best}\nSample: {filtered[:15]}"
 
-## Quick Start
 
-### Installation
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Universal word game solver")
+    parser.add_argument("--game", choices=["wordle", "custom"], default="wordle")
+    parser.add_argument("--history", action="append", default=[], help="Entry in GUESS:PATTERN form")
+    parser.add_argument("--image", help="Optional screenshot")
+    parser.add_argument("--must-contain", default="")
+    parser.add_argument("--cannot-contain", default="")
+    parser.add_argument("--pattern", default="")
+    parser.add_argument("--length", type=int, default=5)
+    parser.add_argument("--gui", action="store_true", help="Launch the GUI")
+    args = parser.parse_args()
 
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
+    if args.gui:
+        try:
+            from gui import WordGameSolverGUI
 
-### Solve Wordle from Guesses
+            app = WordGameSolverGUI()
+            app.mainloop()
+        except ImportError:
+            print("GUI dependencies not available. Install Tkinter or run in CLI mode.")
+            return
 
-```bash
-python main.py --game wordle --history "SLATE:GY___" --history "CRANE:YY_YY"
-```
+    if args.game == "wordle":
+        if not args.history:
+            print("No Wordle history provided. Use --history SLATE:GY___ ...")
+            return
+        output = solve_wordle(args.history)
+        if args.image:
+            try:
+                output = f"Image detection: {summarize_board_image(args.image)}\n\n{output}"
+            except Exception as exc:
+                output = f"Image detection failed: {exc}\n\n{output}"
+        print(output)
+        return
 
-### Solve from Screenshot
+    print(solve_custom(args.length, args.must_contain, args.cannot_contain, args.pattern))
 
-```bash
-python main.py --game wordle --image screenshot.png
-```
 
-### Solve Spelling Bee
-
-```bash
-python main.py --game spelling-bee --center S --letters RTCALY
-```
-
-### Solve Waffle
-
-```bash
-python main.py --game waffle --image waffle-board.png
-```
-
-### Custom Game with Manual Constraints
-
-```bash
-python main.py --game custom \
-  --must-contain "AEIOU" \
-  --cannot-contain "XYZ" \
-  --length 5 \
-  --pattern "S____"
-```
-
-## Pattern Format
-
-### Wordle / Standard
-
-- `G` = Green (correct letter, correct position)
-- `Y` = Yellow (correct letter, wrong position)
-- `_` = Gray (letter not in word)
-
-Example: `SLATE:GY___` means S is green, L is yellow, others are gray.
-
-### Custom Patterns
-
-- `*` = Any letter
-- `[ABC]` = One of A, B, or C
-- `[^XYZ]` = Any letter except X, Y, Z
-- Position-based: `S*A**` means S at position 0, A at position 2
-
-## Project Structure
-
-```
-wordle-solver/
-├── main.py                 # CLI entry point
-├── game_solver.py          # Universal solver engine
-├── game_rules/
-│   ├── wordle_rules.py     # Wordle-specific rules
-│   ├── spelling_bee.py     # Spelling Bee solver
-│   ├── waffle_rules.py     # Waffle-specific rules
-│   └── custom_rules.py     # Custom constraint support
-├── image_processor.py      # Screenshot parsing & OCR
-├── wordlist.txt            # Standard dictionary
-├── wordlist_extended.txt   # Extended word list
-└── requirements.txt        # Dependencies
-```
-
-## Examples
-
-### Example 1: Wordle with History
-
-```bash
-python main.py --game wordle \
-  --history "SLATE:GY___" \
-  --history "CRANE:YY_YY" \
-  --history "STOKE:G_Y__"
-```
-
-Output:
-```
-Candidates remaining: 12
-Best next guess: THEIR
-```
-
-### Example 2: Screenshot-Based Solver
-
-```bash
-python main.py --game wordle --image my-wordle.png --show-candidates
-```
-
-### Example 3: Spelling Bee
-
-```bash
-python main.py --game spelling-bee --center E --letters ARLTON
-```
-
-Output:
-```
-Possible words: LATER, LEARN, NEAR, RENT, TORN, etc.
-Best score: ORIENTAL (8 letters)
-```
-
-### Example 4: Custom Game
-
-```bash
-python main.py --game custom \
-  --must-contain "QU" \
-  --length 6 \
-  --pattern "[QU]****"
-```
-
-## How It Works
-
-1. **Parse Input** — Accept screenshot, text, or manual constraints
-2. **Detect Board** — Auto-identify grid type and layout from image
-3. **Extract Letters** — Use OCR to read letters and colors
-4. **Build Constraints** — Convert board state to filterable rules
-5. **Filter Candidates** — Apply constraints to word list
-6. **Rank Solutions** — Score by letter frequency or game-specific heuristics
-7. **Return Answers** — Display best guesses or all valid words
-
-## Roadmap
-
-- [ ] Desktop GUI with drag-and-drop image support
-- [ ] Webcam live capture for real-time solving
-- [ ] More game types (Semantle, Wordle Unlimited, Connections)
-- [ ] Advanced OCR with color detection
-- [ ] Win/Mac/Linux executable packaging
-- [ ] Mobile app (React Native / Flutter)
-- [ ] Browser extension for inline solving
-
-## Notes
-
-This is a working MVP designed to be lightweight, extensible, and easy to run locally. The image-based detection works best with high-contrast, well-lit board screenshots. For maximum accuracy, combine screenshot input with manual constraint refinement.
-
-## License
-
-MIT
-
+if __name__ == "__main__":
+    main()
